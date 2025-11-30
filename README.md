@@ -9,3 +9,11 @@ Check out the live demo [here](https://xss.home.marvin-fuchs.de).
 ## Quick-Start
 
 Start the docker container. The app is listening on port `8080`.
+
+## Vulnerabilities
+
+### 404 Page
+
+The 404 page reflects the requested URL without proper sanitization.
+
+- `http://localhost:8080/<img src=x onerror=alert('XSS')>`

@@ -1,0 +1,8 @@
+services:
+  murder-app:
+    build:
+      context: .
+      dockerfile: dockerfile
+    container_name: xss-demo-app
+    ports:
+      - '8080:8080'
