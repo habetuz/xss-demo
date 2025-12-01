@@ -40,6 +40,7 @@
     <script>
       let currentUser = null;
       let pollingInterval = null;
+      let previousMessageCount = 0;
 
       // Check authentication and get current user
       async function checkAuth() {
@@ -89,17 +90,24 @@
         if (messages.length === 0) {
           container.innerHTML =
             '<div class="loading-indicator">No messages yet. Be the first to say hello!</div>';
+          previousMessageCount = 0;
           return;
         }
 
+        // Determine how many new messages there are
+        const newMessageCount = messages.length - previousMessageCount;
+        
         container.innerHTML = messages
-          .map((msg) => {
+          .map((msg, index) => {
             const time = new Date(msg.timestamp).toLocaleTimeString();
             const isOwn = msg.username === currentUser;
+            // Only add animation class to new messages
+            const isNew = index >= previousMessageCount;
+            const animationClass = isNew ? 'new' : '';
 
             // WARNING: XSS vulnerability - messages are rendered as HTML!
             return `
-                    <div class="message ${isOwn ? 'own' : ''}">
+                    <div class="message ${isOwn ? 'own' : ''} ${animationClass}">
                         <div class="message-header">
                             <span class="message-username">${msg.username}</span>
                             <span class="message-time">${time}</span>
@@ -109,6 +117,9 @@
                 `;
           })
           .join('');
+
+        // Update previous message count
+        previousMessageCount = messages.length;
 
         // Scroll to bottom
         container.scrollTop = container.scrollHeight;
