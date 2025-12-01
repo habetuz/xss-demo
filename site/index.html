@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>XSS Demo Chat</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="chat-container">
+      <div class="chat-header">
+        <h1>🔥 Global Chat</h1>
+        <div class="user-info">
+          <span class="username" id="currentUsername"></span>
+          <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+      </div>
+
+      <div class="error-banner" id="errorBanner"></div>
+
+      <div class="messages-container" id="messagesContainer">
+        <div class="loading-indicator">Loading messages...</div>
+      </div>
+
+      <div class="input-container">
+        <form class="input-form" id="messageForm">
+          <input
+            type="text"
+            class="message-input"
+            id="messageInput"
+            placeholder="Type your message..."
+            autocomplete="off"
+            required
+          />
+          <button type="submit" class="send-btn">Send</button>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      let currentUser = null;
+      let pollingInterval = null;
+
+      // Check authentication and get current user
+      async function checkAuth() {
+        try {
+          const response = await fetch('/api/user');
+          if (!response.ok) {
+            // Not authenticated, redirect to login
+            const currentPath = window.location.pathname;
+            window.location.href = `/login.html?redirect=${encodeURIComponent(currentPath)}`;
+            return false;
+          }
+
+          const data = await response.json();
+          currentUser = data.username;
+          document.getElementById('currentUsername').textContent = currentUser;
+          return true;
+        } catch (error) {
+          showError('Failed to authenticate');
+          return false;
+        }
+      }
+
+      // Fetch and display messages
+      async function loadMessages() {
+        try {
+          const response = await fetch('/api/messages');
+          if (!response.ok) {
+            if (response.status === 401) {
+              // Session expired
+              window.location.href = `/login.html?redirect=${encodeURIComponent(window.location.pathname)}`;
+              return;
+            }
+            throw new Error('Failed to load messages');
+          }
+
+          const data = await response.json();
+          displayMessages(data.messages);
+        } catch (error) {
+          showError('Failed to load messages');
+        }
+      }
+
+      // Display messages (with XSS vulnerability for demo purposes)
+      function displayMessages(messages) {
+        const container = document.getElementById('messagesContainer');
+
+        if (messages.length === 0) {
+          container.innerHTML =
+            '<div class="loading-indicator">No messages yet. Be the first to say hello!</div>';
+          return;
+        }
+
+        container.innerHTML = messages
+          .map((msg) => {
+            const time = new Date(msg.timestamp).toLocaleTimeString();
+            const isOwn = msg.username === currentUser;
+
+            // WARNING: XSS vulnerability - messages are rendered as HTML!
+            return `
+                    <div class="message ${isOwn ? 'own' : ''}">
+                        <div class="message-header">
+                            <span class="message-username">${msg.username}</span>
+                            <span class="message-time">${time}</span>
+                        </div>
+                        <div class="message-content">${msg.message}</div>
+                    </div>
+                `;
+          })
+          .join('');
+
+        // Scroll to bottom
+        container.scrollTop = container.scrollHeight;
+      }
+
+      // Helper function to escape HTML
+      function escapeHtml(unsafe) {
+        return unsafe
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+
+      // Send a message
+      async function sendMessage(message) {
+        try {
+          // Escape HTML in the message before sending to backend
+          const escapedMessage = escapeHtml(message);
+          
+          const response = await fetch(
+            `/api/messages/send?message=${encodeURIComponent(escapedMessage)}`
+          );
+
+          if (!response.ok) {
+            if (response.status === 401) {
+              window.location.href = `/login.html?redirect=${encodeURIComponent(window.location.pathname)}`;
+              return;
+            }
+            throw new Error('Failed to send message');
+          }
+
+          // Reload messages immediately after sending
+          await loadMessages();
+        } catch (error) {
+          showError('Failed to send message');
+        }
+      }
+
+      // Show error banner
+      function showError(message) {
+        const banner = document.getElementById('errorBanner');
+        banner.textContent = message;
+        banner.classList.add('show');
+        setTimeout(() => {
+          banner.classList.remove('show');
+        }, 5000);
+      }
+
+      // Logout
+      function logout() {
+        // Clear the session cookie by setting it to expire
+        document.cookie =
+          'session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        window.location.href = '/login.html';
+      }
+
+      // Form submission
+      document
+        .getElementById('messageForm')
+        .addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const input = document.getElementById('messageInput');
+          const message = input.value.trim();
+
+          if (message) {
+            await sendMessage(message);
+            input.value = '';
+          }
+        });
+
+      // Initialize
+      (async () => {
+        const authenticated = await checkAuth();
+        if (authenticated) {
+          await loadMessages();
+
+          // Poll for new messages every 2 seconds
+          pollingInterval = setInterval(loadMessages, 2000);
+        }
+      })();
+
+      // Cleanup on page unload
+      window.addEventListener('beforeunload', () => {
+        if (pollingInterval) {
+          clearInterval(pollingInterval);
+        }
+      });
+    </script>
+  </body>
+</html>

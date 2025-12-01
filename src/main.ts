@@ -1,9 +1,124 @@
 import express from 'express';
 import path from 'node:path';
 import fs from 'node:fs/promises';
+import {
+  authenticateUser,
+  getUsernameFromSession,
+  registerUser,
+} from './user.js';
 
 const app = express();
 const port = 8080;
+
+// Helper function to parse cookies manually
+function getCookie(cookieHeader: string | undefined, name: string): string | undefined {
+  if (!cookieHeader) return undefined;
+  const cookies = cookieHeader.split(';').map(c => c.trim());
+  const cookie = cookies.find(c => c.startsWith(`${name}=`));
+  return cookie ? cookie.substring(name.length + 1) : undefined;
+}
+
+// User API
+app.get('/api/user/login', (req, res) => {
+  const { username, password } = req.query;
+
+  if (!username || !password) {
+    return res
+      .status(400)
+      .json({ error: 'Username and password are required' });
+  }
+
+  // Simple authentication logic (for demo purposes only)
+  const sessionCookie = authenticateUser(
+    username as string,
+    password as string
+  );
+  if (sessionCookie) {
+    // Set a cookie in the response
+    res.cookie('session', sessionCookie);
+    return res.json({ message: 'Login successful' });
+  } else {
+    return res.status(401).json({ error: 'Invalid username or password' });
+  }
+});
+
+app.get('/api/user/signup', (req, res) => {
+  const { username, password } = req.query;
+  if (!username || !password) {
+    return res
+      .status(400)
+      .json({ error: 'Username and password are required' });
+  }
+
+  if (registerUser(username as string, password as string)) {
+    const sessionCookie = authenticateUser(
+      username as string,
+      password as string
+    );
+    res.cookie('session', sessionCookie!);
+    return res.json({ message: 'signup successful' });
+  } else {
+    return res.status(409).json({ error: 'Username already taken' });
+  }
+});
+
+app.get('/api/user', (req, res) => {
+  // Retrieve cookie
+  const sessionCookie = getCookie(req.headers.cookie, 'session');
+  if (!sessionCookie) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  // Simple session validation (for demo purposes only)
+  const username = getUsernameFromSession(sessionCookie);
+  if (username) {
+    return res.json({ username });
+  } else {
+    return res.status(401).json({ error: 'Invalid session' });
+  }
+});
+
+// Chat API
+const messages: Array<{ username: string; message: string; timestamp: number }> = [];
+
+app.get('/api/messages/send', (req, res) => {
+  const sessionCookie = getCookie(req.headers.cookie, 'session');
+  if (!sessionCookie) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const username = getUsernameFromSession(sessionCookie);
+  if (!username) {
+    return res.status(401).json({ error: 'Invalid session' });
+  }
+
+  const { message } = req.query;
+  if (!message) {
+    return res.status(400).json({ error: 'Message is required' });
+  }
+
+  messages.push({ username, message: message as string, timestamp: Date.now() });
+  return res.json({ message: 'Message sent' });
+});
+
+app.get('/api/messages', (req, res) => {
+  const sessionCookie = getCookie(req.headers.cookie, 'session');
+  if (!sessionCookie) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const username = getUsernameFromSession(sessionCookie);
+  if (!username) {
+    return res.status(401).json({ error: 'Invalid session' });
+  }
+
+  return res.json({ messages });
+});
+
+// Redirect root to /index.html
+app.get('/', (_, res) => {
+  res.redirect('/index.html');
+});
 
 // Handle API not found
 app.get(/$\/api\/.*/, (_, res) => {
