@@ -17,3 +17,9 @@ Start the docker container. The app is listening on port `8080`.
 The 404 page reflects the requested URL without proper sanitization.
 
 - `http://localhost:8080/<img src=x onerror=alert('XSS')>`
+
+### Profile picture
+
+Image link url is not escaped.
+
+- Image url: `" onerror="console.log('XSS')"><img src="https://m.media-amazon.com/images/I/71cFW8sV4zL.png`
