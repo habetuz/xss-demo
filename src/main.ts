@@ -5,6 +5,8 @@ import {
   authenticateUser,
   getUsernameFromSession,
   registerUser,
+  getUserByUsername,
+  setProfilePicture,
 } from './user.js';
 
 const app = express();
@@ -72,9 +74,33 @@ app.get('/api/user', (req, res) => {
   // Simple session validation (for demo purposes only)
   const username = getUsernameFromSession(sessionCookie);
   if (username) {
-    return res.json({ username });
+    const user = getUserByUsername(username);
+    return res.json({ username, profilePicture: user?.profilePicture });
   } else {
     return res.status(401).json({ error: 'Invalid session' });
+  }
+});
+
+app.get('/api/user/profile-picture', (req, res) => {
+  const sessionCookie = getCookie(req.headers.cookie, 'session');
+  if (!sessionCookie) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const username = getUsernameFromSession(sessionCookie);
+  if (!username) {
+    return res.status(401).json({ error: 'Invalid session' });
+  }
+
+  const { url } = req.query;
+  if (!url) {
+    return res.status(400).json({ error: 'Profile picture URL is required' });
+  }
+
+  if (setProfilePicture(username, url as string)) {
+    return res.json({ message: 'Profile picture updated' });
+  } else {
+    return res.status(500).json({ error: 'Failed to update profile picture' });
   }
 });
 
@@ -112,7 +138,16 @@ app.get('/api/messages', (req, res) => {
     return res.status(401).json({ error: 'Invalid session' });
   }
 
-  return res.json({ messages });
+  // Add current profile pictures to messages
+  const messagesWithProfiles = messages.map(msg => {
+    const user = getUserByUsername(msg.username);
+    return {
+      ...msg,
+      profilePicture: user?.profilePicture
+    };
+  });
+
+  return res.json({ messages: messagesWithProfiles });
 });
 
 // Redirect root to /index.html

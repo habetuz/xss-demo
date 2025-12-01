@@ -1,6 +1,7 @@
 type User = {
   username: string;
   password: string; // Not safe to store passwords in plain text, but this is a demo
+  profilePicture?: string;
 };
 
 const users: User[] = [];
@@ -35,4 +36,17 @@ export function authenticateUser(
 
 export function getUsernameFromSession(sessionId: string): string | undefined {
   return cookies[sessionId];
+}
+
+export function getUserByUsername(username: string): User | undefined {
+  return users.find((user) => user.username === username);
+}
+
+export function setProfilePicture(username: string, profilePicture: string): boolean {
+  const user = users.find((user) => user.username === username);
+  if (user) {
+    user.profilePicture = profilePicture;
+    return true;
+  }
+  return false;
 }

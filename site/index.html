@@ -12,11 +12,85 @@
         <h1>🔥 Global Chat</h1>
         <div class="user-info">
           <span class="username" id="currentUsername"></span>
+          <button class="logout-btn" onclick="showProfilePictureModal()">
+            Set Picture
+          </button>
           <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
       </div>
 
       <div class="error-banner" id="errorBanner"></div>
+
+      <!-- Profile Picture Modal -->
+      <div
+        id="profilePictureModal"
+        style="
+          display: none;
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          z-index: 1000;
+          align-items: center;
+          justify-content: center;
+        "
+      >
+        <div
+          style="
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 400px;
+            width: 90%;
+          "
+        >
+          <h2 style="margin-bottom: 20px">Set Profile Picture</h2>
+          <input
+            type="text"
+            id="profilePictureInput"
+            placeholder="Enter image URL..."
+            style="
+              width: 100%;
+              padding: 12px;
+              border: 2px solid #e0e0e0;
+              border-radius: 6px;
+              margin-bottom: 20px;
+            "
+          />
+          <div style="display: flex; gap: 12px">
+            <button
+              onclick="saveProfilePicture()"
+              style="
+                flex: 1;
+                padding: 12px;
+                background: #667eea;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+              "
+            >
+              Save
+            </button>
+            <button
+              onclick="closeProfilePictureModal()"
+              style="
+                flex: 1;
+                padding: 12px;
+                background: #ccc;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+              "
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
 
       <div class="messages-container" id="messagesContainer">
         <div class="loading-indicator">Loading messages...</div>
@@ -96,7 +170,7 @@
 
         // Determine how many new messages there are
         const newMessageCount = messages.length - previousMessageCount;
-        
+
         container.innerHTML = messages
           .map((msg, index) => {
             const time = new Date(msg.timestamp).toLocaleTimeString();
@@ -105,10 +179,17 @@
             const isNew = index >= previousMessageCount;
             const animationClass = isNew ? 'new' : '';
 
-            // WARNING: XSS vulnerability - messages are rendered as HTML!
+            // Profile picture with fallback
+            // XSS vulnerability: profilePicture URL is not sanitized
+            const avatarHtml = msg.profilePicture
+              ? `<img src="${msg.profilePicture}" class="message-avatar" onerror="this.style.display='none'">`
+              : '';
+
+            // XSS vulnerability: messages are rendered as HTML!
             return `
                     <div class="message ${isOwn ? 'own' : ''} ${animationClass}">
                         <div class="message-header">
+                            ${avatarHtml}
                             <span class="message-username">${msg.username}</span>
                             <span class="message-time">${time}</span>
                         </div>
@@ -128,11 +209,11 @@
       // Helper function to escape HTML
       function escapeHtml(unsafe) {
         return unsafe
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-          .replace(/"/g, "&quot;")
-          .replace(/'/g, "&#039;");
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
       }
 
       // Send a message
@@ -140,7 +221,7 @@
         try {
           // Escape HTML in the message before sending to backend
           const escapedMessage = escapeHtml(message);
-          
+
           const response = await fetch(
             `/api/messages/send?message=${encodeURIComponent(escapedMessage)}`
           );
@@ -168,6 +249,43 @@
         setTimeout(() => {
           banner.classList.remove('show');
         }, 5000);
+      }
+
+      // Profile picture modal functions
+      function showProfilePictureModal() {
+        const modal = document.getElementById('profilePictureModal');
+        modal.style.display = 'flex';
+      }
+
+      function closeProfilePictureModal() {
+        const modal = document.getElementById('profilePictureModal');
+        modal.style.display = 'none';
+        document.getElementById('profilePictureInput').value = '';
+      }
+
+      async function saveProfilePicture() {
+        const url = document.getElementById('profilePictureInput').value.trim();
+        if (!url) {
+          showError('Please enter a valid URL');
+          return;
+        }
+
+        try {
+          const response = await fetch(
+            `/api/user/profile-picture?url=${encodeURIComponent(url)}`
+          );
+          if (!response.ok) {
+            throw new Error('Failed to update profile picture');
+          }
+
+          closeProfilePictureModal();
+          showError('Profile picture updated!');
+          setTimeout(() => {
+            document.getElementById('errorBanner').classList.remove('show');
+          }, 2000);
+        } catch (error) {
+          showError('Failed to update profile picture');
+        }
       }
 
       // Logout

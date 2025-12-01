@@ -1,101 +1,119 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Login - XSS Demo Chat</title>
-    <link rel="stylesheet" href="/styles.css">
-</head>
-<body>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
     <div class="container">
-        <h1>XSS Demo Chat</h1>
-        <p class="subtitle">Welcome! Please login or create an account</p>
-        
-        <div id="error" class="error"></div>
-        
-        <form id="authForm">
-            <div class="form-group">
-                <label for="username">Username</label>
-                <input type="text" id="username" name="username" required autocomplete="username">
-            </div>
-            
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" required autocomplete="current-password">
-            </div>
-            
-            <div class="button-group">
-                <button type="submit" class="btn-login" data-action="login">Login</button>
-                <button type="button" class="btn-signup" data-action="signup">Sign Up</button>
-            </div>
-        </form>
+      <h1>XSS Demo Chat</h1>
+      <p class="subtitle">Welcome! Please login or create an account</p>
+
+      <div id="error" class="error"></div>
+
+      <form id="authForm">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input
+            type="text"
+            id="username"
+            name="username"
+            required
+            autocomplete="username"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            required
+            autocomplete="current-password"
+          />
+        </div>
+
+        <div class="button-group">
+          <button type="submit" class="btn-login" data-action="login">
+            Login
+          </button>
+          <button type="button" class="btn-signup" data-action="signup">
+            Sign Up
+          </button>
+        </div>
+      </form>
     </div>
 
     <script>
-        const form = document.getElementById('authForm');
-        const errorDiv = document.getElementById('error');
-        const usernameInput = document.getElementById('username');
-        const passwordInput = document.getElementById('password');
+      const form = document.getElementById('authForm');
+      const errorDiv = document.getElementById('error');
+      const usernameInput = document.getElementById('username');
+      const passwordInput = document.getElementById('password');
 
-        // Get redirect parameter from URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const redirectTo = urlParams.get('redirect') || '/';
+      // Get redirect parameter from URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const redirectTo = urlParams.get('redirect') || '/';
 
-        function showError(message) {
-            errorDiv.textContent = message;
-            errorDiv.classList.add('show');
+      function showError(message) {
+        errorDiv.textContent = message;
+        errorDiv.classList.add('show');
+      }
+
+      function hideError() {
+        errorDiv.classList.remove('show');
+      }
+
+      function setLoading(isLoading) {
+        if (isLoading) {
+          form.classList.add('loading');
+        } else {
+          form.classList.remove('loading');
+        }
+      }
+
+      async function handleAuth(action) {
+        hideError();
+
+        const username = usernameInput.value.trim();
+        const password = passwordInput.value;
+
+        if (!username || !password) {
+          showError('Please fill in all fields');
+          return;
         }
 
-        function hideError() {
-            errorDiv.classList.remove('show');
+        setLoading(true);
+
+        try {
+          const response = await fetch(
+            `/api/user/${action}?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+          );
+          const data = await response.json();
+
+          if (response.ok) {
+            // Successfully authenticated, redirect
+            window.location.href = redirectTo;
+          } else {
+            showError(data.error || 'Authentication failed');
+          }
+        } catch (error) {
+          showError('Network error. Please try again.');
+        } finally {
+          setLoading(false);
         }
+      }
 
-        function setLoading(isLoading) {
-            if (isLoading) {
-                form.classList.add('loading');
-            } else {
-                form.classList.remove('loading');
-            }
-        }
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        handleAuth('login');
+      });
 
-        async function handleAuth(action) {
-            hideError();
-            
-            const username = usernameInput.value.trim();
-            const password = passwordInput.value;
-
-            if (!username || !password) {
-                showError('Please fill in all fields');
-                return;
-            }
-
-            setLoading(true);
-
-            try {
-                const response = await fetch(`/api/user/${action}?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`);
-                const data = await response.json();
-
-                if (response.ok) {
-                    // Successfully authenticated, redirect
-                    window.location.href = redirectTo;
-                } else {
-                    showError(data.error || 'Authentication failed');
-                }
-            } catch (error) {
-                showError('Network error. Please try again.');
-            } finally {
-                setLoading(false);
-            }
-        }
-
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            handleAuth('login');
-        });
-
-        document.querySelector('.btn-signup').addEventListener('click', () => {
-            handleAuth('signup');
-        });
+      document.querySelector('.btn-signup').addEventListener('click', () => {
+        handleAuth('signup');
+      });
     </script>
-</body>
+  </body>
 </html>
