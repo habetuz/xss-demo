@@ -9,7 +9,7 @@
   <body>
     <div class="chat-container">
       <div class="chat-header">
-        <h1>🔥 Global Chat</h1>
+        <h1>*** Global Chat ***</h1>
         <div class="user-info">
           <span class="username" id="currentUsername"></span>
           <button class="logout-btn" onclick="showProfilePictureModal()">
@@ -22,70 +22,20 @@
       <div class="error-banner" id="errorBanner"></div>
 
       <!-- Profile Picture Modal -->
-      <div
-        id="profilePictureModal"
-        style="
-          display: none;
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0, 0, 0, 0.5);
-          z-index: 1000;
-          align-items: center;
-          justify-content: center;
-        "
-      >
-        <div
-          style="
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            max-width: 400px;
-            width: 90%;
-          "
-        >
-          <h2 style="margin-bottom: 20px">Set Profile Picture</h2>
+      <div id="profilePictureModal" class="modal-overlay">
+        <div class="modal-content">
+          <h2 class="modal-title">Set Profile Picture</h2>
           <input
             type="text"
             id="profilePictureInput"
             placeholder="Enter image URL..."
-            style="
-              width: 100%;
-              padding: 12px;
-              border: 2px solid #e0e0e0;
-              border-radius: 6px;
-              margin-bottom: 20px;
-            "
+            class="modal-input"
           />
-          <div style="display: flex; gap: 12px">
-            <button
-              onclick="saveProfilePicture()"
-              style="
-                flex: 1;
-                padding: 12px;
-                background: #667eea;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                cursor: pointer;
-              "
-            >
+          <div class="modal-buttons">
+            <button onclick="saveProfilePicture()" class="modal-btn-save">
               Save
             </button>
-            <button
-              onclick="closeProfilePictureModal()"
-              style="
-                flex: 1;
-                padding: 12px;
-                background: #ccc;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                cursor: pointer;
-              "
-            >
+            <button onclick="closeProfilePictureModal()" class="modal-btn-cancel">
               Cancel
             </button>
           </div>
