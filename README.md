@@ -23,3 +23,15 @@ The 404 page reflects the requested URL without proper sanitization.
 Image link url is not escaped.
 
 - Image url: `" onerror="console.log('XSS')"><img src="https://m.media-amazon.com/images/I/71cFW8sV4zL.png`
+
+### Chat
+
+While the frontend is escaping input text, the API doesn't.
+
+- `http://localhost:8080/api/messages/send?message=<img src="" onerror="console.log('XSS')>`
+
+### Redirect
+
+The login page accepts a `redirect` parameter that is used directly in `window.location.href` without validation, allowing JavaScript protocol injection.
+
+- `http://localhost:8080/login.html?redirect=javascript:alert('XSS')`
